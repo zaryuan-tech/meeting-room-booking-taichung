@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>台中會議室預約</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#1c2230; --muted:#6b7280; --line:#e3e6eb; --soft:#f0f2f5;
+  --accent:#c2621f; --accent-ink:#fff; --today:#fdf1e7; --danger:#c43c3c; --ok:#1f8a5b;
+  --room-main:#c2621f;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Noto Sans TC",system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+h1{font-size:22px;margin:0;font-weight:700}
+.sub{color:var(--muted);font-size:13px}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px}
+.bar .grow{flex:1}
+.title{font-size:18px;font-weight:700;min-width:130px;text-align:center}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;line-height:1.2}
+.btn:hover{background:var(--soft)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn:disabled{opacity:.55;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--card);padding:7px 14px}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+select.btn{padding-right:28px;width:auto}
+.hours div:first-child{transform:none}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.status{font-size:13px;color:var(--muted)}
+.status.err{color:var(--danger)}
+
+/* 月視圖 */
+.month{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.dow div{padding:8px;text-align:center;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line)}
+.cell{min-height:112px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;cursor:pointer;display:flex;flex-direction:column;gap:3px;min-width:0}
+.cell:nth-child(7n){border-right:0}
+.cell:hover{background:var(--soft)}
+.cell.out{background:#fafbfc;color:#b4b9c2}
+.cell.today{background:var(--today)}
+.cell .num{font-size:13px;font-weight:700}
+.cell.today .num{color:var(--accent)}
+.chip{font-size:12px;border-radius:5px;padding:2px 6px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.chip b{font-weight:500;margin-right:4px;font-variant-numeric:tabular-nums}
+.more{font-size:12px;color:var(--muted)}
+
+/* 日視圖 */
+.day{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.dayhead{display:grid;grid-template-columns:56px repeat(var(--cols),minmax(0,1fr));border-bottom:1px solid var(--line)}
+.dayhead div{padding:10px;font-weight:700;font-size:14px;border-left:1px solid var(--line)}
+.dayhead div:first-child{border-left:0}
+.daybody{display:grid;grid-template-columns:56px repeat(var(--cols),minmax(0,1fr));position:relative}
+.hours div{height:var(--slot);font-size:12px;color:var(--muted);text-align:right;padding-right:8px;transform:translateY(-8px)}
+.col{position:relative;border-left:1px solid var(--line)}
+.slot{height:var(--slot);border-bottom:1px solid var(--soft);cursor:pointer}
+.slot:nth-child(2n){border-bottom-color:var(--line)}
+.slot:hover{background:var(--today)}
+.slot.past{background:repeating-linear-gradient(45deg,#fafbfc,#fafbfc 6px,#f2f3f5 6px,#f2f3f5 12px);cursor:default}
+.ev{position:absolute;left:4px;right:4px;border-radius:7px;padding:4px 8px;color:#fff;font-size:13px;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.ev .t{font-variant-numeric:tabular-nums;opacity:.9;font-size:12px}
+.ev .p{font-weight:700}
+.ev .n{opacity:.9;font-size:12px}
+
+/* 對話框 */
+dialog{border:0;border-radius:14px;padding:0;width:min(520px,calc(100vw - 32px));box-shadow:0 20px 50px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(20,24,33,.45)}
+.dlg-h{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line)}
+.dlg-h h2{margin:0;font-size:17px}
+.x{border:0;background:none;font-size:22px;line-height:1;color:var(--muted)}
+.dlg-b{padding:16px 20px;display:grid;gap:12px}
+.dlg-f{display:flex;gap:8px;justify-content:flex-end;padding:0 20px 18px}
+label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+label .req{color:var(--danger)}
+input,select,textarea{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.msg{font-size:14px;border-radius:8px;padding:8px 10px}
+.msg.err{background:#fdecec;color:var(--danger)}
+.msg.ok{background:#e8f6ef;color:var(--ok)}
+.kv{display:grid;grid-template-columns:72px 1fr;gap:6px 10px;font-size:14px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.code{font-size:26px;font-weight:700;letter-spacing:4px;font-variant-numeric:tabular-nums}
+.hint{font-size:12px;color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+
+@media (max-width:720px){
+  .cell{min-height:64px;padding:4px}
+  .chip{font-size:0;height:6px;padding:0;border-radius:3px}
+  .chip b{display:none}
+  .title{min-width:0;font-size:16px}
+  .row2{grid-template-columns:1fr}
+  .dayhead div{font-size:13px;padding:8px 6px}
+  .ev{left:2px;right:2px;padding:3px 5px;font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>台中辦公室會議室預約</h1>
+      <div class="sub">點選日曆上的空白時段即可預約，需填寫姓名與 Email</div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </header>
+
+  <div class="bar">
+    <button class="btn" id="prev" aria-label="上一頁">‹</button>
+    <div class="title" id="title"></div>
+    <button class="btn" id="next" aria-label="下一頁">›</button>
+    <button class="btn" id="todayBtn">今天</button>
+    <div class="grow"></div>
+    <select class="btn" id="roomFilter"></select>
+    <div class="seg" role="group" aria-label="檢視">
+      <button id="vMonth" aria-pressed="true">月</button>
+      <button id="vDay" aria-pressed="false">日</button>
+    </div>
+    <button class="btn" id="refresh" title="重新整理">↻</button>
+    <button class="btn primary" id="newBtn">＋ 新增預約</button>
+  </div>
+  <div class="status" id="status" style="margin:-4px 2px 10px">載入中…</div>
+
+  <div id="view"></div>
+</div>
+
+<!-- 預約表單 -->
+<dialog id="bookDlg">
+  <form id="bookForm" method="dialog" novalidate>
+    <div class="dlg-h"><h2>新增預約</h2><button type="button" class="x" data-close>×</button></div>
+    <div class="dlg-b">
+      <label>會議室 <span class="req">*</span><select name="room" id="fRoom"></select></label>
+      <div class="row2">
+        <label>日期 <span class="req">*</span><input type="date" name="date" id="fDate" required></label>
+        <div class="row2">
+          <label>開始 <span class="req">*</span><select name="startTime" id="fStart"></select></label>
+          <label>結束 <span class="req">*</span><select name="endTime" id="fEnd"></select></label>
+        </div>
+      </div>
+      <label>會議主題 <span class="req">*</span><input name="purpose" maxlength="100" placeholder="例：部門週會、廠商拜訪" required></label>
+      <div class="row2">
+        <label>姓名 <span class="req">*</span><input name="name" id="fName" maxlength="50" autocomplete="name" required></label>
+        <label>Email <span class="req">*</span><input type="email" name="email" id="fEmail" maxlength="120" autocomplete="email" required></label>
+      </div>
+      <label>與會者（選填）<input name="attendees" maxlength="200" placeholder="例：董事長、王小明"></label>
+      <div class="hint">確認信與取消碼會寄到這個 Email。</div>
+      <div class="msg err" id="bookErr" hidden></div>
+    </div>
+    <div class="dlg-f">
+      <button type="button" class="btn" data-close>取消</button>
+      <button type="submit" class="btn primary" id="bookSubmit">確認預約</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 預約成功 -->
+<dialog id="doneDlg">
+  <div class="dlg-h"><h2>預約完成</h2><button type="button" class="x" data-close>×</button></div>
+  <div class="dlg-b" id="doneBody"></div>
+  <div class="dlg-f"><button type="button" class="btn" id="icsBtn">下載行事曆檔</button><button type="button" class="btn primary" data-close>好</button></div>
+</dialog>
+
+<!-- 預約詳情與取消 -->
+<dialog id="infoDlg">
+  <form id="cancelForm" method="dialog" novalidate>
+    <div class="dlg-h"><h2>預約內容</h2><button type="button" class="x" data-close>×</button></div>
+    <div class="dlg-b">
+      <dl class="kv" id="infoKv"></dl>
+      <hr>
+      <div id="cancelArea">
+        <div class="hint" style="margin-bottom:8px">要取消這筆預約，請輸入預約時的 Email 與確認信中的取消碼。</div>
+        <div class="row2">
+          <label>Email<input type="email" name="email" id="cEmail" autocomplete="email"></label>
+          <label>取消碼<input name="code" inputmode="numeric" maxlength="6"></label>
+        </div>
+      </div>
+      <div class="msg err" id="cancelErr" hidden></div>
+    </div>
+    <div class="dlg-f">
+      <button type="button" class="btn" data-close>關閉</button>
+      <button type="submit" class="btn danger" id="cancelSubmit">取消預約</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* ===== 設定：部署 Apps Script 後，把網址貼在這裡 ===== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbwxTn6AvAog2OA0en5WpB46Lrb3jCz8T8Vqmhd49KgjWu7WsEJreChSFcJD17SkP0ROUQ/exec';
+
+const ROOMS = [
+  { id: 'main', name: '台中辦公室會議室', short: '會議室', color: 'var(--room-main)' }
+];
+const OPEN = 7, CLOSE = 20;          // 07:00–20:00
+const MAX_DAYS_AHEAD = 92;
+const SLOT_PX = 26;                  // 每 30 分鐘的高度
+
+/* ===== 狀態 ===== */
+const state = { view: 'month', cursor: new Date(), room: 'all', bookings: [], loaded: false };
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const WEEK = '日一二三四五六';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const roomOf = id => ROOMS.find(r => r.id === id) || { name: id, short: id, color: '#888' };
+const times = (() => { const a = []; for (let h = OPEN; h <= CLOSE; h++) { a.push(`${pad(h)}:00`); if (h < CLOSE) a.push(`${pad(h)}:30`); } return a; })();
+const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const nowHHmm = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+
+const store = {
+  get(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} }
+};
+
+/* ===== API ===== */
+async function api(method, body) {
+  if (API_URL.includes('請貼上')) throw new Error('尚未設定 API_URL，請依部署說明貼上 Apps Script 網址');
+  const opt = method === 'GET'
+    ? { method: 'GET' }
+    : { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) };
+  const url = method === 'GET' ? `${API_URL}?action=list&t=${Date.now()}` : API_URL;
+  const res = await fetch(url, { ...opt, redirect: 'follow' });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || '發生錯誤');
+  return data;
+}
+
+async function load(quiet) {
+  const st = $('#status');
+  if (!quiet) { st.textContent = '載入中…'; st.className = 'status'; }
+  try {
+    const data = await api('GET');
+    state.bookings = data.bookings;
+    state.loaded = true;
+    st.textContent = `已同步 ${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}・共 ${data.bookings.length} 筆預約`;
+    st.className = 'status';
+  } catch (e) {
+    st.textContent = '無法載入資料：' + e.message;
+    st.className = 'status err';
+  }
+  render();
+}
+
+/* ===== 畫面 ===== */
+function visible() {
+  return state.bookings.filter(b => state.room === 'all' || b.room === state.room);
+}
+
+function render() {
+  $('#vMonth').setAttribute('aria-pressed', state.view === 'month');
+  $('#vDay').setAttribute('aria-pressed', state.view === 'day');
+  state.view === 'month' ? renderMonth() : renderDay();
+}
+
+function renderMonth() {
+  const c = state.cursor, y = c.getFullYear(), m = c.getMonth();
+  $('#title').textContent = `${y} 年 ${m + 1} 月`;
+  const first = new Date(y, m, 1);
+  const start = addDays(first, -first.getDay());
+  const weeks = Math.ceil((first.getDay() + new Date(y, m + 1, 0).getDate()) / 7);
+  const today = ymd(new Date());
+  const byDate = {};
+  visible().forEach(b => (byDate[b.date] ||= []).push(b));
+  Object.values(byDate).forEach(a => a.sort((p, q) => p.startTime.localeCompare(q.startTime)));
+
+  let html = '<div class="month"><div class="dow">' + [...WEEK].map(w => `<div>${w}</div>`).join('') + '</div><div class="grid">';
+  for (let i = 0; i < weeks * 7; i++) {
+    const d = addDays(start, i), key = ymd(d), list = byDate[key] || [];
+    const cls = ['cell', d.getMonth() !== m ? 'out' : '', key === today ? 'today' : ''].join(' ');
+    html += `<div class="${cls}" data-date="${key}"><div class="num">${d.getDate()}</div>`;
+    list.slice(0, 3).forEach(b => {
+      html += `<div class="chip" style="background:${roomOf(b.room).color}" title="${esc(`${b.startTime}–${b.endTime} ${b.purpose}（${b.name}）`)}"><b>${b.startTime}</b>${esc(b.purpose)}</div>`;
+    });
+    if (list.length > 3) html += `<div class="more">還有 ${list.length - 3} 筆</div>`;
+    html += '</div>';
+  }
+  $('#view').innerHTML = html + '</div></div>';
+  $('#view').querySelectorAll('.cell').forEach(el => el.onclick = () => {
+    state.cursor = parseYmd(el.dataset.date); state.view = 'day'; render();
+  });
+}
+
+function renderDay() {
+  const d = state.cursor, key = ymd(d), today = ymd(new Date());
+  $('#title').textContent = `${d.getMonth() + 1} 月 ${d.getDate()} 日（${WEEK[d.getDay()]}）`;
+  const rooms = ROOMS.filter(r => state.room === 'all' || r.id === state.room);
+  const slots = times.slice(0, -1);
+  const isPast = t => key < today || (key === today && t < nowHHmm());
+
+  let html = `<div class="day" style="--cols:${rooms.length};--slot:${SLOT_PX}px">`;
+  html += '<div class="dayhead"><div></div>' + rooms.map(r => `<div><span class="dot" style="background:${r.color}"></span>${r.name}</div>`).join('') + '</div>';
+  html += '<div class="daybody"><div class="hours">' + slots.map(t => `<div>${t.endsWith(':00') ? t : ''}</div>`).join('') + '</div>';
+  rooms.forEach(r => {
+    html += `<div class="col" data-room="${r.id}">`;
+    slots.forEach(t => { html += `<div class="slot${isPast(t) ? ' past' : ''}" data-time="${t}"></div>`; });
+    state.bookings.filter(b => b.date === key && b.room === r.id).forEach(b => {
+      const top = (toMin(b.startTime) - OPEN * 60) / 30 * SLOT_PX;
+      const h = Math.max((toMin(b.endTime) - toMin(b.startTime)) / 30 * SLOT_PX - 2, 20);
+      html += `<div class="ev" data-id="${esc(b.id)}" style="top:${top}px;height:${h}px;background:${r.color}">
+        <div class="t">${b.startTime}–${b.endTime}</div><div class="p">${esc(b.purpose)}</div>${h > 60 ? `<div class="n">${esc(b.name)}</div>` : ''}</div>`;
+    });
+    html += '</div>';
+  });
+  $('#view').innerHTML = html + '</div></div>';
+
+  $('#view').querySelectorAll('.slot:not(.past)').forEach(el => el.onclick = () =>
+    openBook({ room: el.parentElement.dataset.room, date: key, start: el.dataset.time }));
+  $('#view').querySelectorAll('.ev').forEach(el => el.onclick = () =>
+    openInfo(state.bookings.find(b => b.id === el.dataset.id)));
+}
+
+/* ===== 預約 ===== */
+function fillTimes(sel, list, value) {
+  sel.innerHTML = list.map(t => `<option ${t === value ? 'selected' : ''}>${t}</option>`).join('');
+}
+function syncEnd() {
+  const s = $('#fStart').value, cur = $('#fEnd').value;
+  const ends = times.filter(t => t > s);
+  fillTimes($('#fEnd'), ends, ends.includes(cur) ? cur : ends[1] || ends[0]);
+}
+
+function openBook({ room, date, start } = {}) {
+  const f = $('#bookForm');
+  f.reset();
+  $('#fRoom').innerHTML = ROOMS.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  $('#fRoom').value = room || (state.room !== 'all' ? state.room : 'main');
+  const today = new Date();
+  $('#fDate').min = ymd(today);
+  $('#fDate').max = ymd(addDays(today, MAX_DAYS_AHEAD));
+  const d = date || (ymd(state.cursor) >= ymd(today) ? ymd(state.cursor) : ymd(today));
+  $('#fDate').value = d;
+  fillTimes($('#fStart'), times.slice(0, -1), start || '09:00');
+  const startIdx = times.indexOf($('#fStart').value);
+  fillTimes($('#fEnd'), times.filter(t => t > $('#fStart').value), times[startIdx + 2] || times[startIdx + 1]);
+  $('#fName').value = store.get('tc_name');
+  $('#fEmail').value = store.get('tc_email');
+  $('#bookErr').hidden = true;
+  $('#bookDlg').showModal();
+  (f.purpose).focus();
+}
+
+function localCheck(b) {
+  if (!b.purpose.trim()) return '請填寫會議主題';
+  if (!b.name.trim()) return '請填寫姓名';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(b.email.trim())) return 'Email 格式不正確';
+  if (!b.date) return '請選擇日期';
+  if (b.startTime >= b.endTime) return '結束時間要晚於開始時間';
+  const clash = state.bookings.find(x => x.room === b.room && x.date === b.date && b.startTime < x.endTime && b.endTime > x.startTime);
+  if (clash) return `與「${clash.purpose}」（${clash.startTime}–${clash.endTime}）時段重疊`;
+  return '';
+}
+
+let lastBooking = null;
+$('#bookForm').onsubmit = async e => {
+  e.preventDefault();
+  const b = Object.fromEntries(new FormData(e.target));
+  const err = $('#bookErr'), btn = $('#bookSubmit');
+  const problem = localCheck(b);
+  if (problem) { err.textContent = problem; err.hidden = false; return; }
+  err.hidden = true; btn.disabled = true; btn.textContent = '送出中…';
+  try {
+    const res = await api('POST', { action: 'book', ...b });
+    store.set('tc_name', b.name.trim()); store.set('tc_email', b.email.trim());
+    lastBooking = res.booking;
+    state.bookings.push(res.booking);
+    $('#bookDlg').close();
+    const r = roomOf(res.booking.room);
+    $('#doneBody').innerHTML = `
+      <dl class="kv"><dt>會議室</dt><dd>${esc(r.name)}</dd>
+      <dt>時間</dt><dd>${res.booking.date}（${WEEK[parseYmd(res.booking.date).getDay()]}）${res.booking.startTime}–${res.booking.endTime}</dd>
+      <dt>主題</dt><dd>${esc(res.booking.purpose)}</dd></dl>
+      <div><div class="hint">取消碼（請記下來，取消預約時需要）</div><div class="code">${res.cancelCode}</div></div>
+      <div class="msg ${res.emailSent ? 'ok' : 'err'}">${res.emailSent ? `確認信已寄到 ${esc(b.email)}` : '確認信寄送失敗，請自行記下取消碼'}</div>`;
+    $('#doneDlg').showModal();
+    state.cursor = parseYmd(res.booking.date);
+    render();
+    load(true);
+  } catch (ex) {
+    err.textContent = ex.message; err.hidden = false;
+    load(true);
+  } finally {
+    btn.disabled = false; btn.textContent = '確認預約';
+  }
+};
+
+/* ===== 詳情與取消 ===== */
+let infoBooking = null;
+function openInfo(b) {
+  if (!b) return;
+  infoBooking = b;
+  const r = roomOf(b.room);
+  $('#infoKv').innerHTML = `
+    <dt>會議室</dt><dd><span class="dot" style="background:${r.color}"></span>${esc(r.name)}</dd>
+    <dt>時間</dt><dd>${b.date}（${WEEK[parseYmd(b.date).getDay()]}）${b.startTime}–${b.endTime}</dd>
+    <dt>主題</dt><dd>${esc(b.purpose)}</dd>
+    <dt>預約人</dt><dd>${esc(b.name)}<span class="hint">　${esc(b.emailMasked)}</span></dd>
+    ${b.attendees ? `<dt>與會者</dt><dd>${esc(b.attendees)}</dd>` : ''}`;
+  const past = b.date < ymd(new Date());
+  $('#cancelArea').hidden = past;
+  $('#cancelSubmit').hidden = past;
+  $('#cancelForm').reset();
+  $('#cEmail').value = store.get('tc_email');
+  $('#cancelErr').hidden = true;
+  $('#infoDlg').showModal();
+}
+
+$('#cancelForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(e.target));
+  const err = $('#cancelErr'), btn = $('#cancelSubmit');
+  if (!f.email || !f.code) { err.textContent = '請填寫 Email 與取消碼'; err.hidden = false; return; }
+  btn.disabled = true; btn.textContent = '處理中…';
+  try {
+    await api('POST', { action: 'cancel', id: infoBooking.id, email: f.email, code: f.code });
+    state.bookings = state.bookings.filter(b => b.id !== infoBooking.id);
+    $('#infoDlg').close();
+    render();
+    $('#status').textContent = '已取消預約';
+    load(true);
+  } catch (ex) {
+    err.textContent = ex.message; err.hidden = false;
+  } finally {
+    btn.disabled = false; btn.textContent = '取消預約';
+  }
+};
+
+/* ===== 行事曆檔 ===== */
+$('#icsBtn').onclick = () => {
+  const b = lastBooking; if (!b) return;
+  const st = (d, t) => d.replace(/-/g, '') + 'T' + t.replace(':', '') + '00';
+  const tx = s => String(s).replace(/[\\,;]/g, '\\$&');
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Taichung Meeting Room Booking//ZH-TW',
+    'BEGIN:VTIMEZONE', 'TZID:Asia/Taipei', 'BEGIN:STANDARD', 'DTSTART:19700101T000000', 'TZOFFSETFROM:+0800', 'TZOFFSETTO:+0800', 'END:STANDARD', 'END:VTIMEZONE',
+    'BEGIN:VEVENT', `UID:${b.id}@taichung-meeting-room`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
+    `DTSTART;TZID=Asia/Taipei:${st(b.date, b.startTime)}`, `DTEND;TZID=Asia/Taipei:${st(b.date, b.endTime)}`,
+    `SUMMARY:${tx(b.purpose)}`, `LOCATION:${tx(roomOf(b.room).name)}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  a.download = `台中會議室_${b.date}.ics`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+/* ===== 事件 ===== */
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+$('#fStart').onchange = syncEnd;
+$('#prev').onclick = () => { const c = state.cursor; state.cursor = state.view === 'month' ? new Date(c.getFullYear(), c.getMonth() - 1, 1) : addDays(c, -1); render(); };
+$('#next').onclick = () => { const c = state.cursor; state.cursor = state.view === 'month' ? new Date(c.getFullYear(), c.getMonth() + 1, 1) : addDays(c, 1); render(); };
+$('#todayBtn').onclick = () => { state.cursor = new Date(); render(); };
+$('#vMonth').onclick = () => { state.view = 'month'; render(); };
+$('#vDay').onclick = () => { state.view = 'day'; render(); };
+$('#refresh').onclick = () => load();
+$('#newBtn').onclick = () => openBook();
+if (ROOMS.length === 1) { $('#roomFilter').hidden = true; $('#fRoom').closest('label').hidden = true; $('#legend').hidden = true; }
+$('#roomFilter').innerHTML = '<option value="all">全部會議室</option>' + ROOMS.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+$('#roomFilter').onchange = e => { state.room = e.target.value; render(); };
+$('#legend').innerHTML = ROOMS.map(r => `<span><span class="dot" style="background:${r.color}"></span>${r.name}</span>`).join('');
+
+render();
+load();
+setInterval(() => { if (!document.hidden && !document.querySelector('dialog[open]')) load(true); }, 60000);
+</script>
+</body>
+</html>
